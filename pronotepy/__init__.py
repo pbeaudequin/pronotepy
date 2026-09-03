@@ -6,7 +6,7 @@ __title__ = "pronotepy"
 __author__ = "bain, Xiloe"
 __license__ = "MIT"
 __copyright__ = "Copyright (c) bain, Xiloe"
-__version__ = "2.15.6"
+__version__ = "2.15.7"
 
 from .dataClasses import *
 from .clients import *
