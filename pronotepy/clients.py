@@ -333,9 +333,7 @@ class ClientBase:
 
         # challenge
         try:
-            dec = e.aes_decrypt(bytes.fromhex(challenge))
-            dec_no_alea = _enleverAlea(dec.decode())
-            ch = e.aes_encrypt(dec_no_alea.encode()).hex()
+            ch = e.aes_encrypt(challenge.encode()).hex()
         except CryptoError as ex:
             if self.login_mode == "qr_code":
                 ex.args += (
