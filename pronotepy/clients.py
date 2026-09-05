@@ -372,7 +372,7 @@ class ClientBase:
                     self.device_name,
                 )
 
-            log.info(f"successfully logged in as {self.username}")
+            log.info("successfully logged in")
 
             last_conn = auth_response["dataSec"]["data"].get("derniereConnexion")
             self.last_connection = (

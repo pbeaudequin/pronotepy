@@ -1,14 +1,13 @@
-from logging import getLogger, DEBUG
+from logging import getLogger
 import typing
 
 import requests
 from bs4 import BeautifulSoup, Tag
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import quote, urljoin, urlparse, urlunparse
 
 from ..exceptions import *
 
 log = getLogger(__name__)
-log.setLevel(DEBUG)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:73.0) Gecko/20100101 Firefox/73.0"
@@ -55,6 +54,8 @@ def _educonnect(
     password: str,
     url: str,
     exceptions: bool = True,
+    type_user: str = "eleve",
+    initial_response: typing.Optional[requests.Response] = None,
     **opts: str,
 ) -> typing.Optional[requests.Response]:
     """
@@ -77,11 +78,57 @@ def _educonnect(
     if not url:
         raise ENTLoginError("Missing url attribute")
 
-    log.debug(f"[EduConnect {url}] Logging in with {username}")
+    log.debug("[EduConnect %s] Logging in", url)
 
-    payload = {"j_username": username, "j_password": password, "_eventId_proceed": ""}
-    response = session.post(url, headers=HEADERS, data=payload)
-    response = _sso_redirect(session, response, "SAMLResponse", url, payload)
+    # EduConnect first checks local-storage support on e1s1. Credentials sent
+    # directly to that endpoint are rejected. Submit only its hidden fields,
+    # then authenticate on the e1s2 form.
+    response = initial_response or session.get(url, headers=HEADERS)
+    soup = BeautifulSoup(response.text, "html.parser")
+    storage_form = soup.find("form")
+    if not isinstance(storage_form, Tag):
+        response = None
+    else:
+        storage_payload = {
+            input_["name"]: input_.get("value", "")
+            for input_ in storage_form.find_all("input")
+            if input_.get("name") and input_.get("type") == "hidden"
+        }
+        storage_url = urljoin(response.url, storage_form.get("action", ""))
+        response = session.post(storage_url, headers=HEADERS, data=storage_payload)
+
+    if response:
+        soup = BeautifulSoup(response.text, "html.parser")
+        login_form = next(
+            (
+                form
+                for form in soup.find_all("form")
+                if form.find("input", {"name": "j_username"})
+                and form.find("input", {"name": "j_password"})
+            ),
+            None,
+        )
+        if not isinstance(login_form, Tag):
+            response = None
+        else:
+            payload = {
+                input_["name"]: input_.get("value", "")
+                for input_ in login_form.find_all("input")
+                if input_.get("name")
+            }
+            payload.update(
+                {
+                    "j_username": username,
+                    "j_password": password,
+                    "_eventId_proceed": "",
+                    "typeUser": type_user,
+                }
+            )
+            login_url = urljoin(response.url, login_form.get("action", ""))
+            response = session.post(login_url, headers=HEADERS, data=payload)
+            response = _sso_redirect(
+                session, response, "SAMLResponse", login_url, payload
+            )
     if not response:
         if exceptions:
             raise ENTLoginError(
@@ -98,6 +145,8 @@ def _cas_edu(
     password: str,
     url: str = "",
     redirect_form: bool = True,
+    pronote_url: str = "",
+    type_user: str = "eleve",
     **opts: str,
 ) -> requests.cookies.RequestsCookieJar:
     """
@@ -122,18 +171,29 @@ def _cas_edu(
     if not url:
         raise ENTLoginError("Missing url attribute")
 
-    log.debug(f"[ENT {url}] Logging in with {username}")
+    log.debug("[ENT %s] Logging in", url)
 
     # ENT Connection
     with requests.Session() as session:
-        response = session.get(url, headers=HEADERS)
+        login_url = url
+        if pronote_url and url.endswith("service="):
+            login_url += quote(pronote_url, safe="")
+
+        response = session.get(login_url, headers=HEADERS)
 
         if redirect_form:
-            response = _sso_redirect(session, response, "SAMLRequest", url)
+            response = _sso_redirect(session, response, "SAMLRequest", login_url)
         if not response:
             raise ENTLoginError("Connection failure")
 
-        _educonnect(session, username, password, response.url)
+        _educonnect(
+            session,
+            username,
+            password,
+            response.url,
+            type_user=type_user,
+            initial_response=response,
+        )
 
         return session.cookies
 

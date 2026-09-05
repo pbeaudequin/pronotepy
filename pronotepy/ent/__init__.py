@@ -13,6 +13,7 @@ from .ent import (
     ac_poitiers,
     ac_reunion,
     cas_agora06,
+    cas_agora06_parent,
     cas_seinesaintdenis_edu,
     cas_arsene76_edu,
     eclat_bfc,

@@ -39,6 +39,8 @@ An example of client initialization with the ac_reunion ENT:
 
 .. autofunction:: cas_agora06
 
+.. autofunction:: cas_agora06_parent
+
 .. autofunction:: cas_arsene76_edu
 
 .. autofunction:: cas_cybercolleges42_edu

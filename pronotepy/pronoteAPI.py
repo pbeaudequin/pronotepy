@@ -51,6 +51,10 @@ class _Communication(object):
 
         self.session = requests.Session()
         self.session.headers.update(HEADERS_MOBILE if mobile else HEADERS)
+        if cookies:
+            # Keep domain-scoped CAS/ENT cookies on the persistent session so
+            # requests can apply them after a cross-domain redirect.
+            self.session.cookies.update(cookies)
 
         self.encryption = _Encryption()
         self.attributes: dict = {}

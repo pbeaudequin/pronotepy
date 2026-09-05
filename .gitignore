@@ -1,6 +1,8 @@
 # Project exclude paths
 .idea
 /venv/
+/.venv/
 /.mypy_cache/
 /api.log
 *.pyc
+*.egg-info/

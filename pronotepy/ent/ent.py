@@ -72,6 +72,13 @@ ac_reunion = partial(
 
 cas_agora06 = partial(
     _cas_edu,
+    type_user="eleve",
+    url="https://cas.agora06.fr/login?selection=EDU&service=",
+)
+
+cas_agora06_parent = partial(
+    _cas_edu,
+    type_user="responsable",
     url="https://cas.agora06.fr/login?selection=EDU&service=",
 )
 
