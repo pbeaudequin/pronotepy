@@ -253,11 +253,18 @@ class _Communication(object):
         """
         parsed = BeautifulSoup(html, "html.parser")
 
-        if "IP" in html:
-            raise PronoteAPIError("Your IP address is suspended.")
-
         match = re.search(r"Start ?\({(?P<param>[^}]*)}\)", html)  # type: ignore
         if not match:
+            visible_text = " ".join(parsed.stripped_strings).casefold()
+            suspension_messages = (
+                "your ip address is suspended",
+                "your ip address is temporarily suspended",
+                "votre adresse ip est suspendue",
+                "votre adresse ip est provisoirement suspendue",
+                "accès à la base suspendu",
+            )
+            if any(message in visible_text for message in suspension_messages):
+                raise PronoteAPIError("Your IP address is suspended.")
             raise PronoteAPIError(
                 "Page html is different than expected. Be sure that pronote_url is the direct url to your pronote page."
             )
